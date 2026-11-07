@@ -1,0 +1,8 @@
+catboost==1.2.10
+streamlit==1.50.0
+plotly==7.1.0
+pandas==2.3.3
+numpy==2.0.2
+scikit-learn==1.6.1
+openpyxl==3.1.5
+lasio==0.32
