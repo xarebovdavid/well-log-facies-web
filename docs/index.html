@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Литология по ГИС — фации скважины за секунды</title>
+  <meta name="description" content="Загрузите каротаж скважины и получите планшет с прогнозом фаций, уверенностью модели и сомнительными интервалами. Данные обрабатываются в браузере.">
+  <meta name="theme-color" content="#070B14">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C1222'/%3E%3Crect x='7' y='6' width='18' height='6' rx='2' fill='%23F6D55C'/%3E%3Crect x='7' y='13' width='18' height='6' rx='2' fill='%23E0703A'/%3E%3Crect x='7' y='20' width='18' height='6' rx='2' fill='%234FA3E0'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="./" aria-label="Литология по ГИС — на главную">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
+        <rect x="5" y="4" width="22" height="7" rx="2.5" fill="#F6D55C"/>
+        <rect x="5" y="12.5" width="22" height="7" rx="2.5" fill="#E0703A"/>
+        <rect x="5" y="21" width="22" height="7" rx="2.5" fill="#4FA3E0"/>
+      </svg>
+      <span>Литология по ГИС</span>
+    </a>
+    <nav class="tabs" aria-label="Разделы">
+      <button class="tab active" data-view="analysis">Скважина</button>
+      <button class="tab" data-view="model">О модели</button>
+      <button class="tab" data-view="format">Формат данных</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ================= СКВАЖИНА ================= -->
+    <section class="view active" id="view-analysis">
+
+      <div id="landing">
+        <div class="strata" id="strata" aria-hidden="true"></div>
+        <div class="hero">
+          <p class="eyebrow">Классификация литологии по данным ГИС</p>
+          <h1>Фации скважины —<br><em>за секунды</em></h1>
+          <p class="lead">Загрузите каротаж. Модель определит фацию на каждой глубине, покажет, где она сомневается, и даст вам поправить результат.</p>
+
+          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Загрузить файл скважины">
+            <svg class="drop-icon" viewBox="0 0 48 48" width="44" height="44" aria-hidden="true">
+              <path d="M24 32V10m0 0-8 8m8-8 8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M8 30v6a4 4 0 0 0 4 4h24a4 4 0 0 0 4-4v-6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <div class="drop-title">Перетащите файл сюда</div>
+            <div class="drop-sub">или нажмите, чтобы выбрать · CSV, Excel, LAS</div>
+          </div>
+
+          <div class="hero-actions">
+            <button class="btn primary" id="try-example">Попробовать на примере</button>
+            <button class="btn ghost" data-goto="format">Как подготовить файл</button>
+          </div>
+          <p class="privacy">
+            <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"><path d="M10 2 3.5 4.5v5c0 4 2.7 7.2 6.5 8.5 3.8-1.3 6.5-4.5 6.5-8.5v-5L10 2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m7.3 10 2 2 3.5-3.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Файл обрабатывается в вашем браузере и никуда не отправляется
+          </p>
+        </div>
+
+        <ol class="steps">
+          <li><span>1</span><h3>Загрузите кривые</h3><p>GR, сопротивление, пористость, PE. Названия столбцов сайт распознает сам, в том числе русские.</p></li>
+          <li><span>2</span><h3>Изучите планшет</h3><p>Кривые, прогноз фаций и керн рядом. Интервалы, где модель не уверена, подсвечены.</p></li>
+          <li><span>3</span><h3>Поправьте и скачайте</h3><p>Не согласны с моделью — выберите свою фацию. Итоговая разметка скачивается в CSV.</p></li>
+        </ol>
+      </div>
+
+      <div id="workspace" hidden>
+        <div class="ws-head">
+          <div>
+            <div class="ws-source" id="source"></div>
+            <div class="chips" id="wells" role="tablist" aria-label="Скважины"></div>
+          </div>
+          <div class="ws-actions">
+            <button class="btn ghost small" id="open-mapping">Столбцы файла</button>
+            <button class="btn ghost small" id="new-file">Другой файл</button>
+          </div>
+        </div>
+        <div id="notes"></div>
+
+        <div class="metrics" id="metrics"></div>
+
+        <div class="ws-grid">
+          <div class="panel plot-panel">
+            <div class="toolbar">
+              <label class="slider">
+                <span>Порог уверенности <output id="threshold-out">50%</output></span>
+                <input type="range" id="threshold" min="0.3" max="0.9" step="0.01" value="0.5">
+              </label>
+              <span class="toolbar-hint"><i class="swatch-doubt"></i>ниже порога — сомнительно</span>
+              <div class="zoom" role="group" aria-label="Масштаб по глубине">
+                <button class="icon-btn" id="zoom-out" aria-label="Мельче">−</button>
+                <span>масштаб</span>
+                <button class="icon-btn" id="zoom-in" aria-label="Крупнее">+</button>
+              </div>
+            </div>
+            <div class="plot" id="plot"></div>
+          </div>
+
+          <aside class="side">
+            <div class="panel">
+              <h3>Состав разреза</h3>
+              <p class="muted small">Доля каждой фации в прогнозе</p>
+              <ul class="composition" id="composition"></ul>
+            </div>
+          </aside>
+        </div>
+
+        <section class="panel" id="intervals-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Интервалы</h2>
+              <p class="muted">Нажмите на строку, чтобы найти интервал на планшете. Не согласны с моделью — выберите фацию в столбце «Решение геолога».</p>
+            </div>
+            <div class="panel-actions">
+              <button class="btn primary small" id="download-depth">Скачать результат</button>
+              <button class="btn ghost small" id="download-intervals">Скачать интервалы</button>
+            </div>
+          </div>
+          <div class="chips" id="interval-filter"></div>
+          <div class="table-wrap">
+            <table class="intervals">
+              <thead><tr><th>Кровля, м</th><th>Подошва, м</th><th>Мощность</th><th>Прогноз</th><th>Уверенность</th><th>Решение геолога</th></tr></thead>
+              <tbody id="intervals"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel" id="compare-panel" hidden>
+          <div class="panel-head"><div>
+            <h2>Сравнение с керном</h2>
+            <p class="muted">Строки — фация по керну, столбцы — прогноз. Чем ярче клетка, тем больше доля интервалов этой фации. Диагональ — совпадения.</p>
+          </div></div>
+          <div class="matrix" id="compare-matrix"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ================= О МОДЕЛИ ================= -->
+    <section class="view" id="view-model">
+      <div class="page-head">
+        <p class="eyebrow">О модели</p>
+        <h1>Насколько ей можно доверять</h1>
+        <p class="lead" id="model-lead"></p>
+      </div>
+      <div class="metrics" id="model-metrics"></div>
+      <div class="two-col">
+        <section class="panel">
+          <h2>Какие фации модель путает</h2>
+          <p class="muted">Проверка на скважинах, которых модель не видела. Строки — керн, столбцы — прогноз.</p>
+          <div class="matrix" id="model-matrix"></div>
+        </section>
+        <section class="panel">
+          <h2>Какие кривые важнее</h2>
+          <p class="muted">Вклад каждой кривой в решение модели.</p>
+          <ul class="bars" id="model-importance"></ul>
+        </section>
+      </div>
+      <section class="panel">
+        <h2>Как хорошо находится каждая фация</h2>
+        <p class="muted">Доля интервалов фации, которые модель определила верно (на проверочных скважинах).</p>
+        <ul class="bars recall" id="model-recall"></ul>
+      </section>
+      <section class="panel prose">
+        <h2>Как это устроено</h2>
+        <p>Модель — градиентный бустинг <b>CatBoost</b> (500 деревьев глубины 4). Она обучена на размеченных по керну скважинах месторождения Hugoton–Panoma (Канзас) и для каждой глубины оценивает вероятность девяти фаций.</p>
+        <p>Скважины делятся на обучающие и проверочные <b>целиком</b>: все измерения одной скважины попадают только в одну группу. Так оценка честно показывает, чего ждать на новой скважине.</p>
+        <p>Расчёт идёт прямо в браузере: деревья модели выгружены в файл, а результат сверен с исходной моделью на Python на всех интервалах датасета.</p>
+      </section>
+    </section>
+
+    <!-- ================= ФОРМАТ ДАННЫХ ================= -->
+    <section class="view" id="view-format">
+      <div class="page-head">
+        <p class="eyebrow">Формат данных</p>
+        <h1>Как подготовить файл</h1>
+        <p class="lead">Таблица, где одна строка — одна глубина. Подойдут CSV, Excel и LAS. Названия столбцов могут отличаться: сайт узнает их сам, а если не узнает — предложит выбрать.</p>
+      </div>
+      <section class="panel">
+        <div class="table-wrap plain">
+          <table class="fields">
+            <thead><tr><th>Столбец</th><th>Что это</th><th>Обязателен</th></tr></thead>
+            <tbody id="format-fields"></tbody>
+          </table>
+        </div>
+      </section>
+      <div class="two-col">
+        <section class="panel prose">
+          <h2>Полезно знать</h2>
+          <ul>
+            <li>Сопротивление можно дать в Ом·м (столбцы <code>ILD</code>, <code>RT</code>) — логарифм посчитается сам.</li>
+            <li>Нет <code>RELPOS</code>, но есть столбец с пластом — положение в пласте будет посчитано.</li>
+            <li>Есть столбец <code>Facies</code> с описанием керна — сайт сравнит с ним прогноз.</li>
+            <li>CSV с разделителем <code>;</code> и десятичной запятой читается как есть, в кодировках UTF-8 и Windows-1251.</li>
+            <li>Строки с пропусками в кривых пропускаются — об этом будет сообщение.</li>
+          </ul>
+        </section>
+        <section class="panel prose">
+          <h2>Шаблон</h2>
+          <p>Скачайте пример правильно оформленного файла и замените значения своими.</p>
+          <a class="btn primary" href="data/template.csv" download="шаблон_скважины.csv">Скачать шаблон CSV</a>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Командный проект «Классификация литологии по данным ГИС»</span>
+    <a href="https://github.com/xarebovdavid/well-log-facies-web" target="_blank" rel="noopener">Код на GitHub</a>
+  </footer>
+
+  <!-- Сопоставление столбцов -->
+  <dialog id="mapping">
+    <form method="dialog" class="dialog">
+      <h2>Столбцы файла</h2>
+      <p class="muted" id="mapping-status"></p>
+      <div class="mapping-grid" id="mapping-fields"></div>
+      <label class="check"><input type="checkbox" id="mapping-log"> Сопротивление дано в Ом·м — взять log₁₀</label>
+      <div class="dialog-actions">
+        <button class="btn ghost" value="cancel">Отмена</button>
+        <button class="btn primary" id="mapping-apply" value="apply">Применить</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="drag-veil" id="drag-veil" aria-hidden="true"><div>Отпустите файл, чтобы загрузить</div></div>
+  <div class="tip" id="tip" role="status" aria-live="off"></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <input type="file" id="file" accept=".csv,.txt,.xlsx,.xls,.las" hidden>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

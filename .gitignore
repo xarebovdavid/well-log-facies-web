@@ -4,3 +4,7 @@ __pycache__/
 .DS_Store
 catboost_info/
 .claude/
+
+# эталон для сверки расчёта в браузере
+docs/_ref.json
+docs/_test/
