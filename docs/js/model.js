@@ -1,8 +1,8 @@
 // Расчёт модели CatBoost в браузере.
 // Формат model.json и алгоритм описаны в export_web_model.py — там же сверка с Python.
 
-export async function loadModel(url) {
-  const raw = await (await fetch(url)).json();
+/** raw — содержимое model.json. */
+export function prepareModel(raw) {
   return {
     features: raw.features,
     classes: raw.classes,

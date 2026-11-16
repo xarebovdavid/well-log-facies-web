@@ -1,8 +1,8 @@
 // Главный сценарий сайта: загрузка файла → расчёт → планшет, интервалы, сравнение с керном.
-import { FACIES, FACIES_IDS, FEATURES, FIELD_HELP, faciesLabel, isNear } from "./facies.js";
-import { loadModel, predict } from "./model.js";
-import { FIELDS, REQUIRED, buildDataset, guessMapping, missingFields, parseCSV, readFile, toCSV } from "./parse.js";
-import { createPlot, runs, tooltipHTML } from "./plot.js";
+import { FACIES, FACIES_IDS, FEATURES, FIELD_HELP, faciesLabel, isNear } from "./facies.js?v=4";
+import { predict, prepareModel } from "./model.js?v=4";
+import { FIELDS, REQUIRED, buildDataset, guessMapping, missingFields, parseCSV, readFile, toCSV } from "./parse.js?v=4";
+import { createPlot, runs, tooltipHTML } from "./plot.js?v=4";
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -24,11 +24,29 @@ const state = {
 };
 
 // Версия в адресе: после обновления модели браузер не возьмёт старые файлы из кэша.
-const VERSION = "?v=3";
-const ready = loadModel("model/model.json" + VERSION);
-ready.catch(() => toast("Не удалось загрузить модель. Обновите страницу.", "error"));
+const VERSION = "?v=4";
+// В некоторых сетях github.io отвечает очень медленно. Если основной адрес не успел
+// за пару секунд, тот же файл параллельно запрашивается с запасного — берём первый ответ.
+const MIRROR = "https://raw.githubusercontent.com/xarebovdavid/well-log-facies-web/main/docs/";
+
+function fetchText(path) {
+  const attempt = (url, delay) => new Promise((resolve, reject) => {
+    const control = new AbortController();
+    setTimeout(() => fetch(url, { signal: control.signal })
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error(r.status))))
+      .then((text) => resolve({ text, control }), reject), delay);
+    attempts.push(control);
+  });
+  const attempts = [];
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 90000));
+  return Promise.race([Promise.any([attempt(path + VERSION, 0), attempt(MIRROR + path, 2500)]), timeout])
+    .then(({ text, control }) => { attempts.forEach((c) => c !== control && c.abort()); return text; });
+}
+
+const ready = fetchText("model/model.json").then((text) => prepareModel(JSON.parse(text)));
+ready.catch(() => toast("Не удалось загрузить модель: нет связи с сервером. Обновите страницу.", "error"));
 // Описание модели нужно только разделу «О модели» и справке — расчёту оно не мешает.
-fetch("model/info.json" + VERSION).then((r) => r.json()).then(renderModelView)
+fetchText("model/info.json").then((text) => renderModelView(JSON.parse(text)))
   .catch(() => toast("Не удалось загрузить описание модели.", "error"));
 
 // ---------- загрузка данных ----------
@@ -36,7 +54,7 @@ async function openFile(file) {
   try {
     setBusy(true);
     const table = await readFile(file);
-    startWith(table, file.name);
+    await startWith(table, file.name);
   } catch (e) {
     toast(`Не удалось прочитать «${file.name}»: ${e.message}`, "error");
   } finally { setBusy(false); }
@@ -45,9 +63,9 @@ async function openFile(file) {
 async function openExample() {
   try {
     setBusy(true);
-    const text = await (await fetch("data/example.csv" + VERSION)).text();
+    const text = await fetchText("data/example.csv");
     // глубины в датасете Hugoton–Panoma записаны в футах
-    startWith({ ...parseCSV(text), depthUnit: "фут" }, "Пример: две скважины, которых модель не видела при обучении");
+    await startWith({ ...parseCSV(text), depthUnit: "фут" }, "Пример: две скважины, которых модель не видела при обучении");
   } catch { toast("Не удалось загрузить пример.", "error"); } finally { setBusy(false); }
 }
 
@@ -55,7 +73,7 @@ function startWith(table, fileName) {
   const guess = guessMapping(table.columns);
   const source = { table, fileName, mapping: guess.mapping, logRes: guess.logRes, unit: table.depthUnit ?? "м" };
   if (missingFields(guess.mapping).length) openMapping(source);
-  else compute(source);
+  else return compute(source); // ждём расчёт, чтобы индикатор загрузки не погас раньше времени
 }
 
 async function compute(source) {
@@ -392,7 +410,9 @@ function updateMappingStatus() {
 $("#mapping-fields").addEventListener("change", updateMappingStatus);
 dialog.addEventListener("close", () => {
   if (dialog.returnValue !== "apply") return;
-  compute({ ...mappingSource, mapping: readMapping(), logRes: $("#mapping-log").checked, unit: $("#mapping-unit").value });
+  setBusy(true);
+  compute({ ...mappingSource, mapping: readMapping(), logRes: $("#mapping-log").checked, unit: $("#mapping-unit").value })
+    .finally(() => setBusy(false));
 });
 
 // ---------- навигация и события ----------
