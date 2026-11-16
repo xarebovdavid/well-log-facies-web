@@ -8,6 +8,12 @@ const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 const pct = (v) => Math.round(v * 100) + "%";
 const num = (v, digits = 1) => v.toLocaleString("ru-RU", { maximumFractionDigits: digits, useGrouping: false });
+// «1 точка замера», «3 точки замера», «569 точек замера»
+const points = (n) => {
+  const d = n % 10, dd = n % 100;
+  const word = d === 1 && dd !== 11 ? "точка" : d >= 2 && d <= 4 && (dd < 12 || dd > 14) ? "точки" : "точек";
+  return `${n} ${word} замера`;
+};
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -108,14 +114,14 @@ function renderMetrics(animate) {
   const w = well(), n = w.depth.length;
   const cards = [
     { key: "depth", label: "Глубины, м", text: `${num(w.depth[0], 0)}–${num(w.depth[n - 1], 0)}` },
-    { key: "points", label: "Точек", value: n, format: (v) => num(Math.round(v), 0) },
-    { key: "conf", label: "Средняя уверенность", value: w.conf.reduce((a, b) => a + b, 0) / n, format: pct },
-    { key: "doubt", label: "Сомнительных", value: doubtfulShare(w), format: pct, tone: "warn", hint: "Доля глубин с уверенностью ниже порога" },
+    { key: "points", label: "Точек замера", value: n, format: (v) => num(Math.round(v), 0), sub: `шаг по глубине ${num(w.step, 2)} м` },
+    { key: "conf", label: "Средняя уверенность модели", value: w.conf.reduce((a, b) => a + b, 0) / n, format: pct, sub: "среднее по всем точкам замера" },
+    { key: "doubt", label: "Сомнительных точек", value: doubtfulShare(w), format: pct, tone: "warn", sub: "уверенность ниже порога" },
   ];
   if (w.truth) {
     let exact = 0, near = 0;
     for (let i = 0; i < n; i++) { if (w.truth[i] === w.pred[i]) exact++; if (isNear(w.truth[i], w.pred[i])) near++; }
-    cards.push({ key: "match", label: "Совпадение с керном", value: exact / n, format: pct, tone: "good", sub: `с соседними фациями: ${pct(near / n)}` });
+    cards.push({ key: "match", label: "Совпадение с керном", value: exact / n, format: pct, tone: "good", sub: `с точностью до соседней фации: ${pct(near / n)}` });
   }
   $("#metrics").innerHTML = cards.map(metricCard).join("");
   cards.forEach((c) => c.value !== undefined && countUp($(`#metrics [data-key="${c.key}"] .metric-value`), c.value, c.format, animate));
@@ -284,7 +290,7 @@ function renderMatrix(el, cm) {
 // ---------- раздел «О модели» ----------
 function renderModelView(info) {
   const h = info.holdout;
-  $("#model-lead").textContent = `Модель обучена на ${info.train_wells.length} скважинах (${num(info.training_rows, 0)} интервалов) и проверена на ${h.holdout_wells.length} скважинах, которых не видела: ${h.holdout_wells.join(", ")} (${h.holdout_rows} интервалов).`;
+  $("#model-lead").textContent = `Модель обучена на ${info.train_wells.length} скважинах (${points(info.training_rows)}) и проверена на ${h.holdout_wells.length} скважинах, которых не видела: ${h.holdout_wells.join(", ")} (${points(h.holdout_rows)}). Точка замера — одна глубина, на которой записаны все кривые и известна фация по керну.`;
   const cards = [
     { key: "acc", label: "Точное совпадение с керном", text: pct(h.accuracy) },
     { key: "adj", label: "С точностью до соседней фации", text: pct(h.accuracy_adjacent), tone: "good", sub: "соседние фации геологически близки" },
@@ -292,6 +298,7 @@ function renderModelView(info) {
   ];
   $("#model-metrics").innerHTML = cards.map(metricCard).join("");
   renderMatrix($("#model-matrix"), h.confusion_matrix);
+  renderCalibration(h.confidence_bins);
 
   const importance = Object.entries(info.feature_importance).sort((a, b) => b[1] - a[1]);
   const top = importance[0][1];
@@ -306,10 +313,49 @@ function renderModelView(info) {
   }).join("");
 }
 
+/** Как уверенность модели связана с точностью — по проверочным скважинам. */
+function renderCalibration(bins) {
+  const sum = (list, key) => list.reduce((a, b) => a + b[key], 0);
+  const share = (list, key) => sum(list, key) / sum(list, "n");
+  const below = bins.filter((b) => b.to <= 0.5), above = bins.filter((b) => b.from >= 0.5), top = bins[bins.length - 1];
+
+  $("#calibration-lead").textContent = `Уверенность плохо предсказывает точное совпадение с керном, но хорошо отделяет грубые ошибки. При уверенности ниже 50% прогноз попадает в ту же или соседнюю фацию в ${pct(share(below, "near"))} точек замера, при уверенности от 50% — в ${pct(share(above, "near"))}.`;
+  $("#calibration").innerHTML = `
+    <span class="cal-head">Уверенность модели</span><span class="cal-head">Точек замера</span>
+    <span class="cal-head">Точное совпадение с керном</span><span class="cal-head">С точностью до соседней фации</span>` +
+    bins.map((b, i) => {
+      const label = b.from === 0 ? `ниже ${pct(b.to)}` : b.to === 1 ? `от ${pct(b.from)}` : `${Math.round(b.from * 100)}–${pct(b.to)}`;
+      const bar = (v, cls) => `<span class="cal-bar ${cls}"><span class="bar"><i style="--w:${v * 100}%;--i:${i}"></i></span><b>${pct(v)}</b></span>`;
+      return `<span class="cal-label${b.to <= 0.5 ? " low" : ""}">${label}</span><span class="mono">${b.n}</span>${bar(b.exact / b.n, "exact")}${bar(b.near / b.n, "near")}`;
+    }).join("");
+
+  // те же цифры — в справке «Как читать планшет»
+  $("#guide-threshold").textContent = `На проверочных скважинах при уверенности ниже 50% прогноз попадал в ту же или соседнюю фацию в ${pct(share(below, "near"))} точек замера, а при уверенности от 50% — в ${pct(share(above, "near"))}.`;
+  $("#guide-caveat").textContent = `На проверочных скважинах даже при уверенности от ${pct(top.from)} точное совпадение с керном было только в ${pct(top.exact / top.n)} точек (с точностью до соседней фации — в ${pct(top.near / top.n)}).`;
+}
+
 function renderFormatView() {
-  const need = { "Well Name": "нет, если скважина одна", Facies: "нет — для сравнения с моделью", Formation: "нет", RELPOS: "да, или столбец с пластом" };
-  $("#format-fields").innerHTML = FIELDS.map((f) => `
-    <tr><td><code>${f}</code></td><td>${FIELD_HELP[f]}</td><td>${need[f] ?? "да"}</td></tr>`).join("");
+  const groups = [
+    { title: "Нужны для расчёта", note: "Без этих столбцов модель не посчитает прогноз.", fields: [
+      ["Depth"], ["GR"],
+      ["ILD_log10", "Можно дать сопротивление в Ом·м (столбец ILD или RT) — логарифм посчитается сам."],
+      ["DeltaPHI"], ["PHIND"], ["PE"], ["NM_M"],
+      ["RELPOS", "Если его нет, достаточно столбца с пластом — положение посчитается."],
+    ] },
+    { title: "По желанию", note: "Расчёт работает и без них.", fields: [
+      ["Well Name", "Нужен, если в файле несколько скважин."],
+      ["Facies", "Если есть, сайт сравнит прогноз с керном."],
+      ["Formation", "Нужен только чтобы посчитать RELPOS."],
+    ] },
+  ];
+  $("#format-fields").innerHTML = groups.map((g) => `
+    <div>
+      <h2>${g.title}</h2>
+      <p class="muted">${g.note}</p>
+      <dl class="field-list">${g.fields.map(([f, extra]) => `
+        <div><dt><code>${f}</code></dt><dd>${FIELD_HELP[f]}${extra ? `<span>${extra}</span>` : ""}</dd></div>`).join("")}
+      </dl>
+    </div>`).join("");
 }
 
 // ---------- сопоставление столбцов ----------
@@ -359,6 +405,7 @@ $("#dropzone").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.k
 $("#new-file").addEventListener("click", pickFile);
 $("#try-example").addEventListener("click", openExample);
 $("#open-mapping").addEventListener("click", () => openMapping(state.source));
+$("#open-guide").addEventListener("click", () => $("#guide").showModal());
 
 // перетаскивание файла в любое место страницы
 let dragDepth = 0;

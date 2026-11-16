@@ -9,9 +9,12 @@ const TRACKS = [
   { title: "Пористость", unit: "%", series: [
     { name: "PHIND", col: col("PHIND"), color: "var(--c-phi)" },
     { name: "ΔPHI", col: col("DeltaPHI"), color: "var(--c-dphi)", dashed: true },
-  ] },
+  ], hint: "PHIND (сплошная) — средняя нейтронно-плотностная пористость. ΔPHI (пунктир) — разница нейтронной и плотностной пористости." },
   { title: "PE", unit: "", series: [{ name: "PE", col: col("PE"), color: "var(--c-pe)" }] },
-  { title: "Уверенность", unit: "", range: [0, 1], series: [{ name: "Уверенность", conf: true, color: "var(--c-conf)" }] },
+  // Не каротаж, а результат расчёта: вероятность, которую модель даёт выбранной фации.
+  { title: "Уверенность модели", unit: "", range: [0, 1], model: true, percent: true,
+    series: [{ name: "Уверенность модели", conf: true, color: "var(--c-conf)" }],
+    hint: "Не каротажная кривая, а результат расчёта: вероятность, которую модель даёт выбранной фации на этой глубине." },
 ];
 
 const fmt = (v, digits = 2) => v.toLocaleString("ru-RU", { maximumFractionDigits: digits, useGrouping: false });
@@ -88,16 +91,19 @@ export function createPlot(root, well, { threshold, pxPerMeter, animate, onHover
     <div class="plot-head" style="grid-template-columns:${template}">
       <div class="th th-depth">Глубина<small>м</small></div>
       ${tracks.map((t) => `
-        <div class="th">
-          <div class="th-title">${t.series.map((s) => `<i style="background:${s.color}"></i>`).join("")}${t.title}${t.unit ? `<small>${t.unit}</small>` : ""}</div>
-          <div class="th-scale"><span>${fmt(t.lo, 1)}</span><span>${fmt(t.hi, 1)}</span></div>
+        <div class="th${t.model ? " model" : ""}" ${t.hint ? `title="${t.hint}"` : ""}>
+          <div class="th-title">${t.series.length > 1
+            // несколько кривых на треке — подписываем каждую своим образцом линии
+            ? t.series.map((s) => `<span class="th-series"><i class="${s.dashed ? "dash" : ""}" style="color:${s.color}"></i>${s.name}</span>`).join("")
+            : `<i style="color:${t.series[0].color}"></i>${t.title}`}${t.unit ? `<small>${t.unit}</small>` : ""}</div>
+          <div class="th-scale">${t.percent ? "<span>0%</span><span>100%</span>" : `<span>${fmt(t.lo, 1)}</span><span>${fmt(t.hi, 1)}</span>`}</div>
         </div>`).join("")}
       ${strips.map((s) => `<div class="th th-strip">${s.title}</div>`).join("")}
     </div>
     <div class="plot-body${animate ? " animate" : ""}" style="grid-template-columns:${template};height:${H}px">
       <div class="axis">${ticks.map((d) => `<span style="top:${y(d).toFixed(1)}px">${d}</span>`).join("")}</div>
       ${tracks.map((t, i) => `
-        <div class="track" style="--i:${i};grid-column:${i + 2}">
+        <div class="track${t.model ? " model" : ""}" style="--i:${i};grid-column:${i + 2}">
           ${svg(`<g class="grid">${grid}</g>${curvePaths(t)}`)}
           ${t.series.map((s) => `<b class="dot" style="background:${s.color}"></b>`).join("")}
           ${t.range ? `<div class="threshold-line"></div>` : ""}
@@ -181,7 +187,7 @@ export function tooltipHTML(well, i, threshold) {
   return `
     <div class="tip-depth">${fmt(depth[i], 2)} м</div>
     <div class="tip-facies"><i style="background:${FACIES[f].color}"></i><b>${FACIES[f].code}</b> ${FACIES[f].name}</div>
-    <div class="tip-conf ${conf[i] < threshold ? "low" : ""}">уверенность ${Math.round(conf[i] * 100)}%${conf[i] < threshold ? " · сомнительно" : ""}</div>
+    <div class="tip-conf ${conf[i] < threshold ? "low" : ""}">уверенность модели ${Math.round(conf[i] * 100)}%${conf[i] < threshold ? " · сомнительно" : ""}</div>
     <div class="tip-bars">${bars}</div>
     ${truth ? `<div class="tip-core ${truth[i] === f ? "ok" : "miss"}">керн: <b>${FACIES[truth[i]].code}</b> ${truth[i] === f ? "— совпало" : "— расхождение"}</div>` : ""}
     <dl class="tip-values">

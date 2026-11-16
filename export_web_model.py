@@ -2,7 +2,8 @@
 
 Что делает:
 1. Сохраняет деревья модели в компактный JSON  → docs/model/model.json
-2. Копирует описание модели и метрики          → docs/model/info.json
+2. Копирует описание модели и метрики, добавляет
+   связь уверенности с точностью               → docs/model/info.json
 3. Готовит пример скважин и шаблон             → docs/data/
 4. Проверяет, что расчёт «вручную» по этому JSON совпадает с CatBoost,
    и пишет эталон для сверки в браузере        → docs/_ref.json (не попадает в git)
@@ -17,7 +18,7 @@ import numpy as np
 import pandas as pd
 from catboost import CatBoostClassifier
 
-from facies import FEATURES
+from facies import ADJACENT, FEATURES
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "docs"
@@ -48,7 +49,6 @@ trees = [{
 
 compact = {"features": FEATURES, "classes": classes, "scale": scale, "bias": bias, "trees": trees}
 (WEB / "model" / "model.json").write_text(json.dumps(compact, separators=(",", ":")))
-(WEB / "model" / "info.json").write_text(json.dumps(info, ensure_ascii=False), encoding="utf-8")
 
 
 def predict_proba(x):
@@ -74,6 +74,21 @@ same = int((want.argmax(1) == got.argmax(1)).sum())
 print(f"Сверка с CatBoost: макс. расхождение вероятностей {diff:.2e}, "
       f"совпало прогнозов {same} из {len(df)}")
 assert diff < 1e-5 and same == len(df)
+
+# Насколько уверенности модели можно верить: на отложенных скважинах считаем,
+# как часто прогноз верен при разной уверенности. Сайт показывает это в «О модели».
+hold = df["Well Name"].isin(info["holdout"]["holdout_wells"]).to_numpy()
+conf = want[hold].max(axis=1)
+pred = np.asarray(classes)[want[hold].argmax(axis=1)]
+truth = df.loc[hold, "Facies"].to_numpy()
+exact = pred == truth
+near = np.array([p == t or p in ADJACENT[t] for t, p in zip(truth, pred)])
+edges = [0, 0.4, 0.5, 0.6, 0.7, 0.8, 1]
+info["holdout"]["confidence_bins"] = [{
+    "from": lo, "to": hi,
+    "n": int(sel.sum()), "exact": int(exact[sel].sum()), "near": int(near[sel].sum()),
+} for lo, hi in zip(edges, edges[1:]) for sel in [(conf >= lo) & ((conf < hi) | (hi == 1))]]
+(WEB / "model" / "info.json").write_text(json.dumps(info, ensure_ascii=False), encoding="utf-8")
 
 (WEB / "_ref.json").write_text(json.dumps({
     "x": df[FEATURES].to_numpy().tolist(),

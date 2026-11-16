@@ -238,6 +238,14 @@ input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.18); }
 input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; border: 3px solid var(--bg); background: var(--warn); }
 .toolbar-hint { display: inline-flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--muted); }
 .swatch-doubt { width: 22px; height: 12px; border-radius: 4px; background: rgba(255, 107, 107, 0.3); border: 1px solid rgba(255, 107, 107, 0.6); }
+.help-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px;
+  border-radius: 999px; border: 1px solid var(--line-strong);
+  font: 600 0.82rem var(--font); color: var(--text); background: rgba(255, 255, 255, 0.04); cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.help-btn:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--accent); }
+.help-btn b { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: #1A1206; background: var(--accent); font-size: 0.8rem; }
 .zoom { display: flex; align-items: center; gap: 8px; margin-left: auto; font-size: 0.82rem; color: var(--muted); }
 
 .plot-head, .plot-body { display: grid; }
@@ -250,7 +258,12 @@ input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius
 .th-depth { border-left: 0; color: var(--muted); }
 .th small { margin-left: 5px; font-weight: 500; color: var(--muted); }
 .th-title { display: flex; align-items: center; gap: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.th-title i { flex: none; width: 10px; height: 3px; border-radius: 2px; }
+.th-title i { flex: none; width: 14px; height: 0; border-top: 2.5px solid currentColor; border-radius: 2px; }
+.th-title i.dash { border-top-style: dashed; border-top-width: 2px; border-radius: 0; }
+.th-series { display: inline-flex; align-items: center; gap: 5px; margin-right: 8px; }
+/* уверенность — расчёт модели, а не каротаж: трек выделен, чтобы их не путали */
+.th.model, .track.model { background: rgba(242, 165, 65, 0.06); border-left-color: rgba(242, 165, 65, 0.4); }
+.th.model .th-title { color: var(--accent); }
 .th-scale { display: flex; justify-content: space-between; margin-top: 4px; font: 400 0.7rem var(--mono); color: var(--muted); }
 .th-strip { display: grid; place-items: center; padding: 6px 2px; text-align: center; font-size: 0.72rem; color: var(--muted); }
 
@@ -349,7 +362,26 @@ select {
 }
 select:hover { border-color: rgba(148, 170, 210, 0.55); }
 tr.changed select { border-color: var(--accent); }
-.fields td:first-child { white-space: nowrap; }
+/* ============ Справка и формат данных: списки «термин — пояснение» ============ */
+.guide { display: grid; gap: 16px; margin: 0; max-height: min(62vh, 620px); overflow: auto; padding-right: 6px; }
+.guide dt { font-weight: 700; color: var(--accent); }
+.guide dd { margin: 4px 0 0; color: #C3CDE0; }
+.format-groups { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px 48px; align-items: start; }
+.format-groups .muted { margin-top: 4px; }
+.field-list { margin: 16px 0 0; display: grid; }
+.field-list > div { display: grid; grid-template-columns: 112px 1fr; gap: 14px; padding: 11px 0; border-top: 1px solid var(--line); }
+.field-list dd { margin: 0; color: #C3CDE0; }
+.field-list dd span { display: block; margin-top: 2px; font-size: 0.86rem; color: var(--muted); }
+
+/* ============ Уверенность и точность ============ */
+.calibration { display: grid; grid-template-columns: auto auto 1fr 1fr; gap: 12px 28px; align-items: center; margin-top: 18px; font-size: 0.9rem; }
+.cal-head { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.03em; color: var(--muted); padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.cal-label { font-weight: 600; white-space: nowrap; }
+.cal-label.low { color: var(--warn); }
+.cal-bar { display: grid; grid-template-columns: 1fr 44px; gap: 12px; align-items: center; }
+.cal-bar .bar { grid-column: auto; }
+.cal-bar b { font: 600 0.84rem var(--mono); text-align: right; }
+.cal-bar.near .bar i { background: linear-gradient(90deg, #2FAE66, var(--good)); }
 
 /* ============ Матрица ошибок ============ */
 .matrix { display: grid; grid-template-columns: minmax(64px, auto) repeat(9, minmax(0, 1fr)); gap: 4px; margin-top: 18px; font-size: 0.8rem; }
@@ -423,7 +455,12 @@ dialog::backdrop { background: rgba(4, 7, 14, 0.7); backdrop-filter: blur(6px); 
   .ws-source { font-size: 1.1rem; }
   .steps { grid-template-columns: 1fr; }
   .toolbar { gap: 12px; padding: 0 12px; }
-  .toolbar-hint, .zoom span, .facies-name, .th-scale, .th small { display: none; }
+  .toolbar-hint, .zoom span, .facies-name, .th-scale, .th small, .help-btn span, .th-series:nth-child(2) { display: none; }
+  .help-btn { padding: 5px 6px; }
+  .format-groups { grid-template-columns: 1fr; }
+  .field-list > div { grid-template-columns: 96px 1fr; }
+  .calibration { grid-template-columns: auto auto 1fr; gap: 10px 14px; font-size: 0.82rem; }
+  .calibration > :nth-child(4n + 3) { display: none; }
   .slider { gap: 10px; font-size: 0.78rem; }
   input[type="range"] { width: 84px; }
   .th { padding: 8px 4px; font-size: 0.68rem; }
