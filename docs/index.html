@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
   <header class="nav">
@@ -73,7 +73,7 @@
             <div class="chips" id="wells" role="tablist" aria-label="Скважины"></div>
           </div>
           <div class="ws-actions">
-            <button class="btn ghost small" id="open-mapping">Столбцы файла</button>
+            <button class="btn ghost small" id="open-mapping">Столбцы и единицы</button>
             <button class="btn ghost small" id="new-file">Другой файл</button>
           </div>
         </div>
@@ -122,7 +122,7 @@
           <div class="chips" id="interval-filter"></div>
           <div class="table-wrap">
             <table class="intervals">
-              <thead><tr><th>Кровля, м</th><th>Подошва, м</th><th>Мощность</th><th>Прогноз</th><th>Средняя уверенность</th><th>Решение геолога</th></tr></thead>
+              <thead><tr><th id="th-top">Кровля</th><th id="th-bottom">Подошва</th><th>Мощность</th><th>Прогноз</th><th>Средняя уверенность</th><th>Решение геолога</th></tr></thead>
               <tbody id="intervals"></tbody>
             </table>
           </div>
@@ -170,7 +170,7 @@
       </section>
       <section class="panel prose">
         <h2>Как это устроено</h2>
-        <p>Модель — градиентный бустинг <b>CatBoost</b> (500 деревьев глубины 4). Она обучена на размеченных по керну скважинах месторождения Hugoton–Panoma (Канзас) и для каждой глубины оценивает вероятность девяти фаций.</p>
+        <p>Модель — градиентный бустинг <b>CatBoost</b> (500 деревьев глубины 4). Она обучена на размеченных по керну скважинах месторождения Hugoton–Panoma (Канзас) и для каждой глубины оценивает вероятность девяти фаций. Глубины в этом датасете записаны в футах, шаг замера — полфута.</p>
         <p>Скважины делятся на обучающие и проверочные <b>целиком</b>: все измерения одной скважины попадают только в одну группу. Так оценка честно показывает, чего ждать на новой скважине.</p>
         <p>Расчёт идёт прямо в браузере: деревья модели выгружены в файл, а результат сверен с исходной моделью на Python на всех точках замера датасета.</p>
       </section>
@@ -210,10 +210,13 @@
   <!-- Сопоставление столбцов -->
   <dialog id="mapping">
     <form method="dialog" class="dialog">
-      <h2>Столбцы файла</h2>
+      <h2>Столбцы и единицы</h2>
       <p class="muted" id="mapping-status"></p>
       <div class="mapping-grid" id="mapping-fields"></div>
       <label class="check"><input type="checkbox" id="mapping-log"> Сопротивление дано в Ом·м — взять log₁₀</label>
+      <label class="check">Глубина записана в
+        <select id="mapping-unit"><option value="м">метрах</option><option value="фут">футах</option></select>
+      </label>
       <div class="dialog-actions">
         <button class="btn ghost" value="cancel">Отмена</button>
         <button class="btn primary" id="mapping-apply" value="apply">Применить</button>
@@ -250,6 +253,6 @@
   <div class="toasts" id="toasts" aria-live="polite"></div>
   <input type="file" id="file" accept=".csv,.txt,.xlsx,.xls,.las" hidden>
 
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=3"></script>
 </body>
 </html>

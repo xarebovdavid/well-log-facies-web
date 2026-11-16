@@ -23,11 +23,13 @@ const state = {
   threshold: 0.5, zoom: 1, filter: "all", plot: null,
 };
 
-const ready = Promise.all([
-  loadModel("model/model.json"),
-  fetch("model/info.json").then((r) => r.json()),
-]).then(([model, info]) => { state.model = model; state.info = info; renderModelView(info); return model; });
+// Версия в адресе: после обновления модели браузер не возьмёт старые файлы из кэша.
+const VERSION = "?v=3";
+const ready = loadModel("model/model.json" + VERSION);
 ready.catch(() => toast("Не удалось загрузить модель. Обновите страницу.", "error"));
+// Описание модели нужно только разделу «О модели» и справке — расчёту оно не мешает.
+fetch("model/info.json" + VERSION).then((r) => r.json()).then(renderModelView)
+  .catch(() => toast("Не удалось загрузить описание модели.", "error"));
 
 // ---------- загрузка данных ----------
 async function openFile(file) {
@@ -43,14 +45,15 @@ async function openFile(file) {
 async function openExample() {
   try {
     setBusy(true);
-    const text = await (await fetch("data/example.csv")).text();
-    startWith(parseCSV(text), "Пример: две скважины, которых модель не видела при обучении");
+    const text = await (await fetch("data/example.csv" + VERSION)).text();
+    // глубины в датасете Hugoton–Panoma записаны в футах
+    startWith({ ...parseCSV(text), depthUnit: "фут" }, "Пример: две скважины, которых модель не видела при обучении");
   } catch { toast("Не удалось загрузить пример.", "error"); } finally { setBusy(false); }
 }
 
 function startWith(table, fileName) {
   const guess = guessMapping(table.columns);
-  const source = { table, fileName, mapping: guess.mapping, logRes: guess.logRes };
+  const source = { table, fileName, mapping: guess.mapping, logRes: guess.logRes, unit: table.depthUnit ?? "м" };
   if (missingFields(guess.mapping).length) openMapping(source);
   else compute(source);
 }
@@ -67,7 +70,7 @@ async function compute(source) {
         for (let i = r.from; i <= r.to; i++) sum += result.conf[i];
         return { ...r, conf: sum / (r.to - r.from + 1) };
       });
-      return { ...w, ...result, intervals, edits: new Map(), final: null };
+      return { ...w, ...result, intervals, edits: new Map(), final: null, unit: source.unit };
     });
     Object.assign(state, { source, hasTruth: data.hasTruth, current: 0, filter: "all", zoom: 1 });
 
@@ -113,8 +116,8 @@ function doubtfulShare(w) {
 function renderMetrics(animate) {
   const w = well(), n = w.depth.length;
   const cards = [
-    { key: "depth", label: "Глубины, м", text: `${num(w.depth[0], 0)}–${num(w.depth[n - 1], 0)}` },
-    { key: "points", label: "Точек замера", value: n, format: (v) => num(Math.round(v), 0), sub: `шаг по глубине ${num(w.step, 2)} м` },
+    { key: "depth", label: `Глубины, ${w.unit}`, text: `${num(w.depth[0], 0)}–${num(w.depth[n - 1], 0)}` },
+    { key: "points", label: "Точек замера", value: n, format: (v) => num(Math.round(v), 0), sub: `шаг по глубине ${num(w.step, 2)} ${w.unit}` },
     { key: "conf", label: "Средняя уверенность модели", value: w.conf.reduce((a, b) => a + b, 0) / n, format: pct, sub: "среднее по всем точкам замера" },
     { key: "doubt", label: "Сомнительных точек", value: doubtfulShare(w), format: pct, tone: "warn", sub: "уверенность ниже порога" },
   ];
@@ -215,13 +218,15 @@ function renderIntervals() {
     const f = FACIES[r.value];
     return `
       <tr data-from="${r.from}" data-to="${r.to}" class="${isDoubt(r) ? "doubt" : ""} ${isChanged(r) ? "changed" : ""}">
-        <td class="mono">${num(top, 2)}</td><td class="mono">${num(bottom, 2)}</td><td class="mono">${num(bottom - top, 2)} м</td>
+        <td class="mono">${num(top, 2)}</td><td class="mono">${num(bottom, 2)}</td><td class="mono">${num(bottom - top, 2)} ${w.unit}</td>
         <td><span class="facies-chip"><i style="background:${f.color}"></i><b>${f.code}</b></span> <span class="facies-name">${f.name}</span></td>
         <td><span class="conf"><span class="conf-bar"><i style="width:${r.conf * 100}%"></i></span><span class="mono">${pct(r.conf)}</span></span></td>
         <td><select aria-label="Решение геолога">${options(w.edits.get(r.from) ?? r.value)}</select></td>
       </tr>`;
   }).join("") || `<tr class="empty"><td colspan="6">Таких интервалов нет</td></tr>`;
 
+  $("#th-top").textContent = `Кровля, ${w.unit}`;
+  $("#th-bottom").textContent = `Подошва, ${w.unit}`;
   const changed = w.edits.size;
   $("#download-depth").textContent = changed ? `Скачать результат · правок: ${changed}` : "Скачать результат";
 }
@@ -258,7 +263,7 @@ function downloadDepth() {
 
 function downloadIntervals() {
   const w = well();
-  const header = ["Кровля, м", "Подошва, м", "Мощность, м", "Прогноз", "Уверенность", "Сомнительно", "Решение геолога"];
+  const header = [`Кровля, ${w.unit}`, `Подошва, ${w.unit}`, `Мощность, ${w.unit}`, "Прогноз", "Уверенность", "Сомнительно", "Решение геолога"];
   const rows = w.intervals.map((r) => {
     const top = w.depth[r.from], bottom = w.depth[r.to] + w.step;
     return [top, bottom, bottom - top, faciesLabel(r.value), r.conf, r.conf < state.threshold ? "да" : "нет", faciesLabel(w.edits.get(r.from) ?? r.value)];
@@ -298,7 +303,7 @@ function renderModelView(info) {
   ];
   $("#model-metrics").innerHTML = cards.map(metricCard).join("");
   renderMatrix($("#model-matrix"), h.confusion_matrix);
-  renderCalibration(h.confidence_bins);
+  if (h.confidence_bins) renderCalibration(h.confidence_bins);
 
   const importance = Object.entries(info.feature_importance).sort((a, b) => b[1] - a[1]);
   const top = importance[0][1];
@@ -370,6 +375,7 @@ function openMapping(source) {
       <small>${FIELD_HELP[f]}</small>
       <select data-field="${f}">${options(source.mapping[f])}</select></label>`).join("");
   $("#mapping-log").checked = source.logRes;
+  $("#mapping-unit").value = source.unit;
   updateMappingStatus();
   dialog.showModal();
 }
@@ -386,7 +392,7 @@ function updateMappingStatus() {
 $("#mapping-fields").addEventListener("change", updateMappingStatus);
 dialog.addEventListener("close", () => {
   if (dialog.returnValue !== "apply") return;
-  compute({ ...mappingSource, mapping: readMapping(), logRes: $("#mapping-log").checked });
+  compute({ ...mappingSource, mapping: readMapping(), logRes: $("#mapping-log").checked, unit: $("#mapping-unit").value });
 });
 
 // ---------- навигация и события ----------

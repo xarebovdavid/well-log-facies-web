@@ -80,7 +80,7 @@ function splitDelimited(text, d) {
 }
 
 export function parseLAS(text) {
-  let section = "", wellName = "", nullValue = -999.25;
+  let section = "", wellName = "", nullValue = -999.25, depthUnit = "м";
   const columns = [], tokens = [];
   for (const line of text.split(/\r?\n/)) {
     const s = line.trim();
@@ -89,7 +89,10 @@ export function parseLAS(text) {
     if (section === "A") { tokens.push(...s.split(/\s+/)); continue; }
     const m = s.match(/^([^.\s]+)\s*\.(\S*)\s*(.*?)\s*:\s*(.*)$/); // МНЕМОНИКА.ЕД  значение : описание
     if (!m) continue;
-    if (section === "C") columns.push(m[1]);
+    if (section === "C") {
+      if (!columns.length && /^F/i.test(m[2])) depthUnit = "фут"; // первая кривая — глубина: .F или .FT
+      columns.push(m[1]);
+    }
     if (section === "W") {
       const key = m[1].toUpperCase();
       if (key === "WELL") wellName = m[3] || m[4];
@@ -101,7 +104,7 @@ export function parseLAS(text) {
   for (let i = 0; i + columns.length <= tokens.length; i += columns.length) {
     rows.push(tokens.slice(i, i + columns.length).map((t) => (parseFloat(t) === nullValue ? "" : t)));
   }
-  return { columns, rows, wellName: wellName.trim(), format: { delimiter: ",", decimalComma: false } };
+  return { columns, rows, wellName: wellName.trim(), depthUnit, format: { delimiter: ",", decimalComma: false } };
 }
 
 async function parseXLSX(buffer) {

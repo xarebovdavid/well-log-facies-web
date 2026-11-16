@@ -34,7 +34,7 @@ export function runs(values, depth, step) {
 }
 
 export function createPlot(root, well, { threshold, pxPerMeter, animate, onHover }) {
-  const { depth, x, conf, pred, truth, final, step } = well;
+  const { depth, x, conf, pred, truth, final, step, unit } = well;
   const n = depth.length;
   const d0 = depth[0] - step / 2, d1 = depth[n - 1] + step / 2;
   const H = Math.round((d1 - d0) * pxPerMeter);
@@ -89,7 +89,7 @@ export function createPlot(root, well, { threshold, pxPerMeter, animate, onHover
 
   root.innerHTML = `
     <div class="plot-head" style="grid-template-columns:${template}">
-      <div class="th th-depth">Глубина<small>м</small></div>
+      <div class="th th-depth">Глубина<small>${unit}</small></div>
       ${tracks.map((t) => `
         <div class="th${t.model ? " model" : ""}" ${t.hint ? `title="${t.hint}"` : ""}>
           <div class="th-title">${t.series.length > 1
@@ -177,7 +177,7 @@ export function createPlot(root, well, { threshold, pxPerMeter, animate, onHover
 
 /** Содержимое всплывающей подсказки для глубины i. */
 export function tooltipHTML(well, i, threshold) {
-  const { depth, x, conf, pred, truth, proba, k } = well;
+  const { depth, x, conf, pred, truth, proba, k, unit } = well;
   const f = pred[i];
   const bars = FACIES_IDS.map((id, c) => {
     const p = proba[i * k + c];
@@ -185,7 +185,7 @@ export function tooltipHTML(well, i, threshold) {
   }).join("");
   const val = (name, digits = 2) => fmt(x[i][col(name)], digits);
   return `
-    <div class="tip-depth">${fmt(depth[i], 2)} м</div>
+    <div class="tip-depth">${fmt(depth[i], 2)} ${unit}</div>
     <div class="tip-facies"><i style="background:${FACIES[f].color}"></i><b>${FACIES[f].code}</b> ${FACIES[f].name}</div>
     <div class="tip-conf ${conf[i] < threshold ? "low" : ""}">уверенность модели ${Math.round(conf[i] * 100)}%${conf[i] < threshold ? " · сомнительно" : ""}</div>
     <div class="tip-bars">${bars}</div>
