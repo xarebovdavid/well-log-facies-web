@@ -8,7 +8,7 @@ export const FIELDS = ["Well Name", "Depth", ...FEATURES, "Facies", "Formation"]
 // Как столбцы могут называться в файлах пользователей.
 const ALIASES = {
   "Well Name": ["well name", "well", "wellname", "well_name", "скважина", "скв"],
-  Depth: ["depth", "dept", "md", "глубина", "глуб"],
+  Depth: ["depth", "depth_m", "dept", "md", "глубина", "глуб"],
   GR: ["gr", "гк", "gk", "gamma"],
   ILD_log10: ["ild_log10", "ild_log", "lld_log10", "log_ild"],
   DeltaPHI: ["deltaphi", "delta_phi", "dphi"],
@@ -145,7 +145,8 @@ export function missingFields(mapping) {
 }
 
 /** Таблица + соответствие столбцов → скважины, готовые к расчёту. */
-export function buildDataset(table, mapping, { logRes, fallbackWell }) {
+export function buildDataset(table, mapping, { logRes, fallbackWell, unit = "м" }) {
+  const metresPerUnit = unit === "фут" ? 0.3048 : 1;
   const at = Object.fromEntries(FIELDS.map((f) => [f, mapping[f] ? table.columns.indexOf(mapping[f]) : -1]));
   const num = (v) => {
     if (typeof v === "number") return v;
@@ -156,7 +157,7 @@ export function buildDataset(table, mapping, { logRes, fallbackWell }) {
 
   let records = table.rows.map((r) => ({
     well: at["Well Name"] >= 0 ? String(r[at["Well Name"]]).trim() : (table.wellName || fallbackWell),
-    depth: num(r[at.Depth]),
+    depth: num(r[at.Depth]) * metresPerUnit,
     formation: at.Formation >= 0 ? String(r[at.Formation]).trim() : "",
     facies: at.Facies >= 0 ? num(r[at.Facies]) : NaN,
     x: FEATURES.map((f) => (at[f] >= 0 ? num(r[at[f]]) : NaN)),
@@ -201,7 +202,7 @@ export function buildDataset(table, mapping, { logRes, fallbackWell }) {
       depth: Float64Array.from(rs, (r) => r.depth),
       x: rs.map((r) => r.x),
       truth: hasTruth ? Int8Array.from(rs, (r) => r.facies) : null,
-      step: diffs.length ? diffs[diffs.length >> 1] : 0.5,
+      step: diffs.length ? diffs[diffs.length >> 1] : 0.5 * metresPerUnit,
     };
   });
   return { wells, notes, hasTruth };

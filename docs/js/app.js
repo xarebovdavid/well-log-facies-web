@@ -1,7 +1,7 @@
 // Главный сценарий сайта: загрузка файла → расчёт → планшет, интервалы, сравнение с керном.
 import { FACIES, FACIES_IDS, FEATURES, FIELD_HELP, faciesLabel, isNear } from "./facies.js?v=4";
 import { predict, prepareModel } from "./model.js?v=4";
-import { FIELDS, REQUIRED, buildDataset, guessMapping, missingFields, parseCSV, readFile, toCSV } from "./parse.js?v=4";
+import { FIELDS, REQUIRED, buildDataset, guessMapping, missingFields, parseCSV, readFile, toCSV } from "./parse.js?v=5";
 import { createPlot, runs, tooltipHTML } from "./plot.js?v=4";
 
 const $ = (s, root = document) => root.querySelector(s);
@@ -80,7 +80,7 @@ async function compute(source) {
   try {
     const model = await ready;
     const fallbackWell = source.fileName.replace(/\.[^.]+$/, "") || "Скважина";
-    const data = buildDataset(source.table, source.mapping, { logRes: source.logRes, fallbackWell });
+    const data = buildDataset(source.table, source.mapping, { logRes: source.logRes, fallbackWell, unit: source.unit });
     state.wells = data.wells.map((w) => {
       const result = predict(model, w.x);
       const intervals = runs(result.pred, w.depth, w.step).map((r) => {
@@ -88,7 +88,7 @@ async function compute(source) {
         for (let i = r.from; i <= r.to; i++) sum += result.conf[i];
         return { ...r, conf: sum / (r.to - r.from + 1) };
       });
-      return { ...w, ...result, intervals, edits: new Map(), final: null, unit: source.unit };
+      return { ...w, ...result, intervals, edits: new Map(), final: null, unit: "м" };
     });
     Object.assign(state, { source, hasTruth: data.hasTruth, current: 0, filter: "all", zoom: 1 });
 
@@ -134,8 +134,8 @@ function doubtfulShare(w) {
 function renderMetrics(animate) {
   const w = well(), n = w.depth.length;
   const cards = [
-    { key: "depth", label: `Глубины, ${w.unit}`, text: `${num(w.depth[0], 0)}–${num(w.depth[n - 1], 0)}` },
-    { key: "points", label: "Точек замера", value: n, format: (v) => num(Math.round(v), 0), sub: `шаг по глубине ${num(w.step, 2)} ${w.unit}` },
+    { key: "depth", label: `Глубины, ${w.unit}`, text: `${num(w.depth[0], 2)}–${num(w.depth[n - 1], 2)}` },
+    { key: "points", label: "Точек замера", value: n, format: (v) => num(Math.round(v), 0), sub: `шаг по глубине ${num(w.step, 4)} ${w.unit}` },
     { key: "conf", label: "Средняя уверенность модели", value: w.conf.reduce((a, b) => a + b, 0) / n, format: pct, sub: "среднее по всем точкам замера" },
     { key: "doubt", label: "Сомнительных точек", value: doubtfulShare(w), format: pct, tone: "warn", sub: "уверенность ниже порога" },
   ];
@@ -272,7 +272,7 @@ function download(name, text) {
 
 function downloadDepth() {
   const w = well(), k = w.k, final = w.final ?? w.pred;
-  const header = ["Well Name", "Depth", ...FEATURES, ...(w.truth ? ["Facies"] : []), "Predicted_Facies", "Confidence",
+  const header = ["Well Name", "Depth_m", ...FEATURES, ...(w.truth ? ["Facies"] : []), "Predicted_Facies", "Confidence",
     ...FACIES_IDS.map((id) => `P_${id}`), "Geologist_Facies", "Doubtful"];
   const rows = Array.from(w.depth, (d, i) => [w.name, d, ...w.x[i], ...(w.truth ? [w.truth[i]] : []), w.pred[i], w.conf[i],
     ...Array.from(w.proba.subarray(i * k, i * k + k)), final[i], w.conf[i] < state.threshold ? 1 : 0]);

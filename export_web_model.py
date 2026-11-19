@@ -98,7 +98,9 @@ info["holdout"]["confidence_bins"] = [{
 
 example = df[df["Well Name"].isin(info["holdout"]["holdout_wells"])]
 example.to_csv(WEB / "data" / "example.csv", index=False)
-pd.read_csv(ROOT / "data" / "new_well.csv").head(40).to_csv(WEB / "data" / "template.csv", index=False)
+template = pd.read_csv(ROOT / "data" / "new_well.csv").head(40).rename(columns={"Depth": "Depth_m"})
+template["Depth_m"] = (template["Depth_m"] * 0.3048).round(6)
+template.to_csv(WEB / "data" / "template.csv", index=False)
 
 size = (WEB / "model" / "model.json").stat().st_size / 1024
 print(f"Модель для сайта: {size:.0f} КБ, деревьев: {len(trees)}, классы: {classes}")
