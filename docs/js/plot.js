@@ -169,7 +169,7 @@ export function createPlot(root, well, { threshold, pxPerMeter, animate, onHover
     body.append(flash);
     flash.addEventListener("animationend", () => flash.remove());
     const target = body.getBoundingClientRect().top + window.scrollY + top + height / 2 - window.innerHeight / 2;
-    window.scrollTo({ top: target, behavior: "smooth" });
+    window.scrollTo({ top: target, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 
   return { setThreshold, focus, height: H };

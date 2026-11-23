@@ -5,25 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Литология по ГИС — фации скважины за секунды</title>
   <meta name="description" content="Загрузите каротаж скважины и получите планшет с прогнозом фаций, уверенностью модели и сомнительными интервалами. Данные обрабатываются в браузере.">
-  <meta name="theme-color" content="#070B14">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C1222'/%3E%3Crect x='7' y='6' width='18' height='6' rx='2' fill='%23F6D55C'/%3E%3Crect x='7' y='13' width='18' height='6' rx='2' fill='%23E0703A'/%3E%3Crect x='7' y='20' width='18' height='6' rx='2' fill='%234FA3E0'/%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=6">
+  <meta name="theme-color" content="#f5f2e9">
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css?v=atlas1">
 </head>
 <body>
   <header class="nav">
     <a class="brand" href="./" aria-label="Литология по ГИС — на главную">
-      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true">
-        <rect x="5" y="4" width="22" height="7" rx="2.5" fill="#F6D55C"/>
-        <rect x="5" y="12.5" width="22" height="7" rx="2.5" fill="#E0703A"/>
-        <rect x="5" y="21" width="22" height="7" rx="2.5" fill="#4FA3E0"/>
-      </svg>
+      <img src="assets/mark.svg" alt="" width="33" height="33">
       <span>Литология по ГИС</span>
     </a>
     <nav class="tabs" aria-label="Разделы">
-      <button class="tab active" data-view="analysis">Скважина</button>
+      <button class="tab active" aria-current="page" data-view="analysis">Скважина</button>
       <button class="tab" data-view="model">О модели</button>
       <button class="tab" data-view="format">Формат данных</button>
     </nav>
@@ -34,11 +27,11 @@
     <section class="view active" id="view-analysis">
 
       <div id="landing">
-        <div class="strata" id="strata" aria-hidden="true"></div>
+
         <div class="hero">
-          <p class="eyebrow">Классификация литологии по данным ГИС</p>
-          <h1>Фации скважины —<br><em>за секунды</em></h1>
-          <p class="lead">Загрузите каротаж. Модель определит фацию на каждой глубине, покажет, где она сомневается, и даст вам поправить результат.</p>
+          <p class="eyebrow">Интерпретация данных ГИС</p>
+          <h1>Литология<br><em>по каротажу</em></h1>
+          <p class="lead">Загрузите кривые ГИС, сравните прогноз фаций с керном и уточните разметку по глубине.</p>
 
           <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Загрузить файл скважины">
             <svg class="drop-icon" viewBox="0 0 48 48" width="44" height="44" aria-hidden="true">
@@ -58,6 +51,12 @@
             Файл обрабатывается в вашем браузере и никуда не отправляется
           </p>
         </div>
+
+        <figure class="plate">
+          <figcaption><span>Разрез скважины</span><strong>CROSS H CATTLE</strong></figcaption>
+          <img src="assets/section.svg" width="478" height="360" alt="Гамма-каротаж и колонка фаций по керну на глубинах от 784,4 до 801 метра">
+          <div class="plate-foot"><span>Канзас, США</span><span>784,4–801,0 м</span></div>
+        </figure>
 
         <ol class="steps">
           <li><span>1</span><h3>Загрузите кривые</h3><p>GR, сопротивление, пористость, PE. Названия столбцов сайт распознает сам, в том числе русские.</p></li>
@@ -89,7 +88,7 @@
                 <input type="range" id="threshold" min="0.3" max="0.9" step="0.01" value="0.5">
               </label>
               <span class="toolbar-hint"><i class="swatch-doubt"></i>ниже порога — сомнительно</span>
-              <button class="help-btn" id="open-guide" type="button"><b>?</b><span>Как читать планшет</span></button>
+              <button aria-label="Как читать планшет" class="help-btn" id="open-guide" type="button"><b>?</b><span>Как читать планшет</span></button>
               <div class="zoom" role="group" aria-label="Масштаб по глубине">
                 <button class="icon-btn" id="zoom-out" aria-label="Мельче">−</button>
                 <span>масштаб</span>
@@ -255,6 +254,6 @@
   <div class="loader" role="status"><i></i>Загружаю модель и данные…</div>
   <input type="file" id="file" accept=".csv,.txt,.xlsx,.xls,.las" hidden>
 
-  <script type="module" src="js/app.js?v=5"></script>
+  <script type="module" src="js/app.js?v=atlas1"></script>
 </body>
 </html>

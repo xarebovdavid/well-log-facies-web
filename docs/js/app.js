@@ -2,7 +2,7 @@
 import { FACIES, FACIES_IDS, FEATURES, FIELD_HELP, faciesLabel, isNear } from "./facies.js?v=4";
 import { predict, prepareModel } from "./model.js?v=4";
 import { FIELDS, REQUIRED, buildDataset, guessMapping, missingFields, parseCSV, readFile, toCSV } from "./parse.js?v=5";
-import { createPlot, runs, tooltipHTML } from "./plot.js?v=4";
+import { createPlot, runs, tooltipHTML } from "./plot.js?v=atlas1";
 
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -118,7 +118,7 @@ function renderWells() {
 }
 
 function renderWell(animate) {
-  renderMetrics(animate);
+  renderMetrics();
   renderPlot(animate);
   renderComposition();
   renderIntervals();
@@ -131,7 +131,7 @@ function doubtfulShare(w) {
   return low / w.conf.length;
 }
 
-function renderMetrics(animate) {
+function renderMetrics() {
   const w = well(), n = w.depth.length;
   const cards = [
     { key: "depth", label: `Глубины, ${w.unit}`, text: `${num(w.depth[0], 2)}–${num(w.depth[n - 1], 2)}` },
@@ -145,26 +145,15 @@ function renderMetrics(animate) {
     cards.push({ key: "match", label: "Совпадение с керном", value: exact / n, format: pct, tone: "good", sub: `с точностью до соседней фации: ${pct(near / n)}` });
   }
   $("#metrics").innerHTML = cards.map(metricCard).join("");
-  cards.forEach((c) => c.value !== undefined && countUp($(`#metrics [data-key="${c.key}"] .metric-value`), c.value, c.format, animate));
+
 }
 
 const metricCard = (c, i) => `
   <div class="metric ${c.tone ?? ""}" data-key="${c.key}" style="--i:${i}" ${c.hint ? `title="${c.hint}"` : ""}>
     <div class="metric-label">${c.label}</div>
-    <div class="metric-value">${c.text ?? ""}</div>
+    <div class="metric-value">${c.text ?? c.format(c.value)}</div>
     ${c.sub ? `<div class="metric-sub">${c.sub}</div>` : ""}
   </div>`;
-
-function countUp(el, to, format, animate = true) {
-  if (!animate || reducedMotion) { el.textContent = format(to); return; }
-  const start = performance.now(), duration = 700;
-  const tick = (now) => {
-    const t = Math.min((now - start) / duration, 1);
-    el.textContent = format(to * (1 - Math.pow(1 - t, 3)));
-    if (t < 1) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
-}
 
 function renderPlot(animate) {
   const w = well();
@@ -417,8 +406,17 @@ dialog.addEventListener("close", () => {
 
 // ---------- навигация и события ----------
 function showView(name) {
-  $$(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + name));
-  $$(".tab").forEach((t) => t.classList.toggle("active", t.dataset.view === name));
+  $$(".view").forEach((view) => {
+    const selected = view.id === "view-" + name;
+    view.classList.toggle("entered", selected);
+    view.classList.toggle("active", selected);
+  });
+  $$(".tab").forEach((tab) => {
+    const selected = tab.dataset.view === name;
+    tab.classList.toggle("active", selected);
+    if (selected) tab.setAttribute("aria-current", "page");
+    else tab.removeAttribute("aria-current");
+  });
 }
 $$(".tab").forEach((t) => t.addEventListener("click", () => { showView(t.dataset.view); window.scrollTo({ top: 0 }); }));
 $$("[data-goto]").forEach((b) => b.addEventListener("click", () => { showView(b.dataset.goto); window.scrollTo({ top: 0 }); }));
@@ -489,25 +487,20 @@ function toast(message, type = "info") {
   setTimeout(() => { el.classList.add("out"); el.addEventListener("animationend", () => el.remove()); }, 6000);
 }
 
-// ---------- декоративные «пласты» на первом экране ----------
-function buildStrata() {
-  const W = 1600, H = 420;
-  const layers = [
-    { color: FACIES[1].color, base: 70, amp: 18, period: 800, time: 46 },
-    { color: FACIES[2].color, base: 130, amp: 22, period: 640, time: 38 },
-    { color: FACIES[3].color, base: 195, amp: 16, period: 800, time: 54 },
-    { color: FACIES[5].color, base: 255, amp: 24, period: 533.33, time: 42 },
-    { color: FACIES[6].color, base: 320, amp: 14, period: 800, time: 60 },
-    { color: FACIES[8].color, base: 375, amp: 18, period: 640, time: 50 },
-  ];
-  const paths = layers.map((l, k) => {
-    let d = `M0,${H}`;
-    for (let x = 0; x <= W + l.period; x += 20) d += `L${x},${(l.base + l.amp * Math.sin((x / l.period) * Math.PI * 2 + k)).toFixed(1)}`;
-    d += `L${W + l.period},${H}Z`;
-    return `<path d="${d}" fill="${l.color}" style="--shift:-${l.period}px;--time:${l.time}s"/>`;
-  }).join("");
-  $("#strata").innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMax slice">${paths}</svg>`;
+// Небольшой сдвиг печатной иллюстрации относительно неподвижной рамки.
+const plate = $(".plate");
+const motion = matchMedia("(hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference)");
+function movePlate(event) {
+  if (!motion.matches) return;
+  const bounds = plate.getBoundingClientRect();
+  const x = (event.clientX - bounds.left) / bounds.width - 0.5;
+  const y = (event.clientY - bounds.top) / bounds.height - 0.5;
+  plate.style.setProperty("--dx", (x * 8).toFixed(2) + "px");
+  plate.style.setProperty("--dy", (y * 6).toFixed(2) + "px");
 }
-
-buildStrata();
+plate.addEventListener("pointermove", movePlate);
+plate.addEventListener("pointerleave", () => {
+  plate.style.removeProperty("--dx");
+  plate.style.removeProperty("--dy");
+});
 renderFormatView();
