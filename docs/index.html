@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#1b1b1d">
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="preload" href="assets/fonts/OpenGOSTtypeB-Regular.ttf" as="font" type="font/ttf" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=carbon1">
+  <link rel="stylesheet" href="css/style.css?v=study1">
 </head>
 <body>
   <header class="nav">
@@ -179,7 +179,10 @@
         <p class="eyebrow">О модели</p>
         <h1>Насколько ей можно доверять</h1>
         <p class="lead" id="model-lead"></p>
-        <a href="https://github.com/xarebovdavid/well-log-facies-web/blob/main/research/README.md">Отчёт по скважинам и фациям</a>
+        <div class="model-links">
+          <a href="research/">Сравнение пяти моделей и разбор песчаника</a>
+          <a href="https://github.com/xarebovdavid/well-log-facies-web/blob/main/research/README.md">Отчёт по скважинам и фациям</a>
+        </div>
       </div>
       <div class="metrics" id="model-metrics"></div>
       <div class="two-col">
@@ -207,7 +210,7 @@
       <section class="panel prose">
         <h2>Как это устроено</h2>
         <p>Модель — градиентный бустинг <b>CatBoost</b> (500 деревьев глубины 4). Она обучена на размеченных по керну скважинах месторождения Hugoton–Panoma (Канзас) и для каждой глубины оценивает вероятность девяти фаций. Глубины в этом датасете записаны в футах, шаг замера — полфута. На планшете и в выгрузке глубина приведена к метрам (шаг 0,1524 м).</p>
-        <p>Скважины делятся на обучающие и проверочные <b>целиком</b>: все измерения одной скважины попадают только в одну группу. Так оценка честно показывает, чего ждать на новой скважине.</p>
+        <p>Мы разделили скважины <b>целиком</b>. Все замеры одной скважины попадают в одну группу. Две проверочные скважины уже использовались в предыдущих опытах команды.</p>
         <p>Расчёт идёт прямо в браузере: деревья модели выгружены в файл, а результат сверен с исходной моделью на Python на всех точках замера датасета.</p>
       </section>
     </section>
@@ -240,6 +243,7 @@
 
   <footer class="footer">
     <span>Командный проект «Классификация литологии по данным ГИС»</span>
+    <a href="research/">Сравнение моделей</a>
     <a href="https://github.com/xarebovdavid/well-log-facies-web" target="_blank" rel="noopener">Код на GitHub</a>
   </footer>
 
@@ -290,6 +294,6 @@
   <div class="loader" role="status"><i></i>Загружаю модель и данные…</div>
   <input type="file" id="file" accept=".csv,.txt,.xlsx,.xls,.las" hidden>
 
-  <script type="module" src="js/app.js?v=atlas1"></script>
+  <script type="module" src="js/app.js?v=study1"></script>
 </body>
 </html>

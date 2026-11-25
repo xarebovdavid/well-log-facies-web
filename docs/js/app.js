@@ -302,7 +302,7 @@ function renderMatrix(el, cm) {
 // ---------- раздел «О модели» ----------
 function renderModelView(info) {
   const h = info.holdout;
-  $("#model-lead").textContent = `Модель обучена на ${info.train_wells.length} скважинах (${points(info.training_rows)}) и проверена на ${h.holdout_wells.length} скважинах, которых не видела: ${h.holdout_wells.join(", ")} (${points(h.holdout_rows)}). Точка замера — одна глубина, на которой записаны все кривые и известна фация по керну.`;
+  $("#model-lead").textContent = `Прогноз для загруженного файла рассчитывает CatBoost. В обучающей выборке ${info.train_wells.length} скважин (${points(info.training_rows)}). Графики ниже показывают результат этой модели на скважинах ${h.holdout_wells.join(" и ")} (${points(h.holdout_rows)}).`;
   const cards = [
     { key: "acc", label: "Точное совпадение с керном", text: pct(h.accuracy) },
     { key: "adj", label: "С точностью до соседней фации", text: pct(h.accuracy_adjacent), tone: "good", sub: "соседние фации геологически близки" },

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1b1b1d">
+  <meta name="description" content="Как пять моделей определяют фации на двух скважинах. Результаты по керну, разбор песчаника по глубине и прогнозы для каждого замера.">
+  <title>Сравнение моделей по керну · Литология по ГИС</title>
+  <link rel="icon" href="../assets/mark.svg" type="image/svg+xml">
+  <link rel="preload" href="../assets/fonts/OpenGOSTtypeB-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="../css/style.css?v=study1">
+</head>
+<body>
+  <header class="nav">
+    <a class="brand" href="../" aria-label="Литология по ГИС, на главную">
+      <img src="../assets/mark.svg" alt="" width="33" height="33">
+      <span>Литология по ГИС</span>
+    </a>
+    <a href="../">К анализу скважины</a>
+  </header>
+  <main class="study">
+    <header class="page-head">
+      <p class="eyebrow">Проверка по керну</p>
+      <h1>Как модели распознают фации</h1>
+      <p class="lead">Сравнили пять моделей на одних и тех же скважинах. По всем девяти фациям лучшую Macro F1 получила CNN1D. Больше всего точек песчаника распознала простая полносвязная сеть MLP.</p>
+    </header>
+
+    <section class="panel study-result" aria-labelledby="results">
+      <div class="prose">
+        <h2 id="results">Две проверочные скважины</h2>
+        <p>На CROSS H CATTLE размечен 501 замер, встречаются восемь фаций. На Recruit F9 все 68 замеров относятся к баффлстоуну. Весь песчаник в этой проверке приходится на CROSS H CATTLE.</p>
+        <p class="muted">Macro F1 даёт каждой из девяти фаций одинаковый вес. Два последних столбца показывают число совпадений с керном.</p>
+      </div>
+      <table class="study-table" aria-label="Результаты пяти моделей на 569 замерах двух проверочных скважин">
+        <thead><tr><th scope="col">Модель</th><th scope="col">Macro F1</th><th scope="col">Все фации<br>из 569</th><th scope="col">Песчаник<br>из 158</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">CNN1D</th><td><strong>0,438</strong></td><td>273</td><td>35</td></tr>
+          <tr><th scope="row">CatBoost с весами</th><td>0,413</td><td>261</td><td>50</td></tr>
+          <tr><th scope="row">CatBoost на сайте</th><td>0,398</td><td>255</td><td>39</td></tr>
+          <tr><th scope="row">MLP 32–16</th><td>0,345</td><td>243</td><td><strong>58</strong></td></tr>
+          <tr><th scope="row">MLP 64–32</th><td>0,324</td><td>221</td><td>47</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel prose study-case" aria-labelledby="sandstone">
+      <h2 id="sandstone">Песчаник на CROSS H CATTLE</h2>
+      <p>По керну все 14 замеров на этом фрагменте относятся к песчанику. На глубинах <strong>789,4320 и 789,5844 м</strong> с керном совпали обе MLP и CatBoost с весами. Базовый CatBoost и CNN1D на тех же глубинах указали крупнозернистый алевролит.</p>
+      <figure>
+        <a href="sandstone.png" aria-label="Открыть график CROSS H CATTLE в полном размере">
+          <img src="sandstone.png" width="2006" height="1130" loading="lazy" alt="Слева гамма-каротаж по глубине, справа керн и четыре прогноза. В рамке на двух соседних глубинах MLP 64–32 и CatBoost с весами совпадают с керном.">
+        </a>
+        <figcaption>Точки на кривой гамма-каротажа и рамка отмечают два выбранных замера. <a href="sandstone.png">График в полном размере</a></figcaption>
+      </figure>
+    </section>
+
+    <section class="panel study-method" aria-labelledby="protocol">
+      <div class="prose">
+        <h2 id="protocol">Как проходила проверка</h2>
+        <p>Для обучения взяли 2 663 замера с шести скважин. Число эпох для MLP 64–32 и CNN1D выбирали только на этих скважинах. В каждом из трёх разбиений учились на четырёх и проверяли на двух. Медиана лучших эпох дала 10 для обеих сетей.</p>
+        <p>По объединённым прогнозам трёх разбиений на этих шести скважинах лидировал CatBoost с весами (Macro F1 0,419). У CNN1D получилось 0,394. На двух отложенных скважинах порядок этих моделей поменялся.</p>
+        <p>CNN1D использует окно из девяти отсчётов. При разрыве или повторе глубины начинается новая последовательность, поэтому окно всегда остаётся внутри одного непрерывного участка. В простой MLP 32–16 сохранили исходные 400 эпох. На первом разбиении и журнал обучения, и отдельный пересчёт дали Macro F1 0,332.</p>
+        <p>Все пять моделей затем обучили на шести скважинах и проверили на CROSS H CATTLE и Recruit F9. Команда уже изучала эти две скважины. Для проверки переноса на новый разрез нужна ещё одна скважина с независимо описанным керном.</p>
+      </div>
+      <div class="prose study-files">
+        <h2>Материалы опыта</h2>
+        <p>В таблице есть глубина в метрах и футах, фация по керну и пять прогнозов для каждого из 3 232 замеров.</p>
+        <a href="predictions.csv" download>Скачать прогнозы по замерам (CSV)</a>
+        <a href="facies-study.zip" download>Скачать ноутбуки, данные и график (ZIP)</a>
+        <a href="https://github.com/xarebovdavid/well-log-facies-web/blob/main/research/README.md">Отчёт по скважинам и признакам</a>
+        <a href="https://github.com/denfom4/-------mlt">Исходные эксперименты команды</a>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
